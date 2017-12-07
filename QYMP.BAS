@@ -41,9 +41,9 @@ DO WHILE LCASE$(f$) <> "exit"
 	ELSEIF LCASE$(LEFT$(f$, 7)) = "delete " THEN
 		IF VAL(MID$(f$, 8)) < 1 THEN
 			st$ = "Value error!"
-	ELSEIF r < VAL(MID$(f$, 8)) THEN
+		ELSEIF r < VAL(MID$(f$, 8)) THEN
 			st$ = "The song is not in the playlist!  "
-	ELSE
+		ELSE
 			FOR i = VAL(MID$(f$, 8)) TO r - 1
 				sl$(i) = sl$(i + 1)
 			NEXT
@@ -60,7 +60,7 @@ DO WHILE LCASE$(f$) <> "exit"
 		IF loopt < 1 THEN
 			loopt = 1
 			st$ = "Value error!  "
-	ELSE
+		ELSE
 			st$ = ""
 		END IF
 	ELSE
@@ -95,11 +95,11 @@ CLOSE #1
 OPEN "playlist.dat" FOR INPUT AS #1
 r = 0
 DO WHILE NOT (EOF(1))
-    r = r + 1
-    LINE INPUT #1, sl$(r)
-    LOCATE 4 + r, 52
-    IF nowplay = r THEN COLOR 14 ELSE COLOR 15
-    PRINT r; ". "; sl$(r)
+	r = r + 1
+	LINE INPUT #1, sl$(r)
+	LOCATE 4 + r, 52
+	IF nowplay = r THEN COLOR 14 ELSE COLOR 15
+	PRINT r; ". "; sl$(r)
 LOOP
 CLOSE #1
 COLOR 15
@@ -153,9 +153,13 @@ SUB qymPlay (filename$)
 	DO WHILE (MID$(initialdata$, 1, 2) = "//" AND NOT (EOF(1)))
 		LINE INPUT #1, initialdata$
 	LOOP
-	LINE INPUT #1, filedata$
+	IF (RIGHT$(initialdata$, 1) = ">" AND NOT (EOF(1))) THEN
+		LINE INPUT #1, filedata$
+		filedata$ = initialdata$ + filedata$
+	ELSE
+		filedata$ = initialdata$
+	END IF
 	CLOSE #1
-	filedata$ = initialdata$ + filedata$
 	tonality = 0
 	beat = 1
 	speed = 88
@@ -163,6 +167,7 @@ SUB qymPlay (filename$)
 	tercet = 0
 	j = 1
 	music$ = ""
+	musicrepeat$ = ""
 	musicclip$ = ""
 	musicclip$ = musicclip$ + "T" + MID$(STR$(INT(speed / beat)), 2)
 	DO WHILE j <= LEN(filedata$)
@@ -243,11 +248,47 @@ SUB qymPlay (filename$)
 			CASE "{"
 				match = INSTR(j + 1, filedata$, "}")
 				j = match
+			CASE "/"
+				IF MID$(filedata$, j + 1, 1) = "/" THEN
+					EXIT DO
+				END IF
+			CASE ":"
+				IF MID$(filedata$, j + 1, 1) = "|" THEN
+					IF musicrepeat$ = "" THEN
+						music$ = music$ + musicclip$ + musicclip$
+						musicclip$ = ""
+					ELSE
+						FOR k = 1 TO repeatTime
+							music$ = music$ + musicclip$ + musicrepeat$
+						NEXT
+						repeatTime = 0
+						musicclip$ = ""
+					END IF
+				ELSE
+					music$ = music$ + musicclip$
+					musicclip$ = ""
+					musicrepeat$ = ""
+				END IF
+			CASE "["
+				repeatTime = 0
+				match = INSTR(j + 1, filedata$, "]")
+				FOR k = j + 1 TO match - 1
+					IF MID$(filedata$, k, 1) = "." THEN
+						repeatTime = repeatTime + 1
+					END IF
+				NEXT
+				IF MID$(filedata$, j + 1, 2) = "1." THEN
+					music$ = music$ + musicclip$
+					musicrepeat$ = musicclip$
+					musicclip$ = ""
+				END IF
+				j = match
 			END SELECT
 			j = j + 1
 		END IF
 	LOOP
-	PLAY musicclip$
+	music$ = music$ + musicclip$
+	PLAY music$
 END SUB
 
 FUNCTION tonalityDict (comment$)
