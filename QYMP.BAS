@@ -153,9 +153,9 @@ SUB qymPlay (filename$)
 	DO WHILE (MID$(initialdata$, 1, 2) = "//" AND NOT (EOF(1)))
 		LINE INPUT #1, initialdata$
 	LOOP
-	LINE INPUT #1, data$
+	LINE INPUT #1, filedata$
 	CLOSE #1
-	data$ = initialdata$ + data$
+	filedata$ = initialdata$ + filedata$
 	tonality = 0
 	beat = 1
 	speed = 88
@@ -165,8 +165,8 @@ SUB qymPlay (filename$)
 	music$ = ""
 	musicclip$ = ""
 	musicclip$ = musicclip$ + "T" + MID$(STR$(INT(speed / beat)), 2)
-	DO WHILE j <= LEN(data$)
-		midchar$ = MID$(data$, j, 1)
+	DO WHILE j <= LEN(filedata$)
+		midchar$ = MID$(filedata$, j, 1)
 		IF ("0" <= midchar$ AND "7" >= midchar$) THEN
 			note = VAL(midchar$)
 			time = 1
@@ -179,8 +179,8 @@ SUB qymPlay (filename$)
 			END IF
 			sharp = 0
 			j = j + 1
-			midchar$ = MID$(data$, j, 1)
-			DO WHILE (j <= LEN(data$) AND (midchar$ = "-" OR midchar$ = "_" OR midchar$ = "'" OR midchar$ = "," OR midchar$ = "^" OR midchar$ = "."))
+			midchar$ = MID$(filedata$, j, 1)
+			DO WHILE (j <= LEN(filedata$) AND (midchar$ = "-" OR midchar$ = "_" OR midchar$ = "'" OR midchar$ = "," OR midchar$ = "^" OR midchar$ = "."))
 				SELECT CASE midchar$
 				CASE "-"
 					time = time + 1
@@ -196,7 +196,7 @@ SUB qymPlay (filename$)
 					space = 0
 				END SELECT
 				j = j + 1
-				midchar$ = MID$(data$, j, 1)
+				midchar$ = MID$(filedata$, j, 1)
 			LOOP
 			IF tercet > 0 THEN
 				time = time * tercetTime
@@ -221,8 +221,8 @@ SUB qymPlay (filename$)
 			CASE "b"
 				sharp = sharp - 1
 			CASE "<"
-				match = INSTR(j + 1, data$, ">")
-				comment$ = MID$(data$, j + 1, match - j - 1)
+				match = INSTR(j + 1, filedata$, ">")
+				comment$ = MID$(filedata$, j + 1, match - j - 1)
 				SELECT CASE MID$(comment$, 2, 1)
 				CASE "="
 					tonality = tonalityDict(MID$(comment$, 3))
@@ -235,13 +235,13 @@ SUB qymPlay (filename$)
 				END SELECT
 				j = match
 			CASE "("
-				match = INSTR(j + 1, data$, ")")
-				comment$ = MID$(data$, j + 1, m - j - 1)
+				match = INSTR(j + 1, filedata$, ")")
+				comment$ = MID$(filedata$, j + 1, match - j - 1)
 				tercet = VAL(comment$)
 				tercetTime = (2 ^ INT(LOG(tercet) / LOG(2))) / tercet
 				j = match
 			CASE "{"
-				match = INSTR(j + 1, data$, "}")
+				match = INSTR(j + 1, filedata$, "}")
 				j = match
 			END SELECT
 			j = j + 1
