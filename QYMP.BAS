@@ -79,6 +79,9 @@ DO WHILE LCASE$(f$) <> "exit"
 		END IF
 	END IF
 LOOP
+CLS
+PRINT "Thank you for using Qingyun Music Player!"
+PRINT "See you next time!"
 END
 
 sub1:
@@ -149,12 +152,23 @@ END FUNCTION
 
 SUB qymPlay (filename$)
 	OPEN filename$ FOR INPUT AS #1
-	LINE INPUT #1, initialdata$
-	DO WHILE (MID$(initialdata$, 1, 2) = "//" AND NOT (EOF(1)))
+	initialdata$ = ""
+	DO WHILE (initialdata$ = "" AND NOT (EOF(1)))
 		LINE INPUT #1, initialdata$
+		match = INSTR(1, initialdata$, "//")
+		IF match > 0 THEN
+			initialdata$ = LEFT$(initialdata$, match - 1)
+		END IF
 	LOOP
-	IF (RIGHT$(initialdata$, 1) = ">" AND NOT (EOF(1))) THEN
-		LINE INPUT #1, filedata$
+	IF RIGHT$(initialdata$, 1) = ">" THEN
+		filedata$ = ""
+		DO WHILE (filedata$ = "" AND NOT (EOF(1)))
+			LINE INPUT #1, filedata$
+			match = INSTR(1, filedata$, "//")
+			IF match > 0 THEN
+				filedata$ = LEFT$(filedata$, match - 1)
+			END IF
+		LOOP
 		filedata$ = initialdata$ + filedata$
 	ELSE
 		filedata$ = initialdata$
@@ -207,6 +221,10 @@ SUB qymPlay (filename$)
 				time = time * tercetTime
 				tercet = tercet - 1
 			END IF
+			IF time = 3 THEN
+				time = 2
+				dot = -1
+			END IF
 			noteType = INT(4 / time)
 			IF NOT (space) THEN
 				musicclip$ = musicclip$ + "ML"
@@ -248,10 +266,6 @@ SUB qymPlay (filename$)
 			CASE "{"
 				match = INSTR(j + 1, filedata$, "}")
 				j = match
-			CASE "/"
-				IF MID$(filedata$, j + 1, 1) = "/" THEN
-					EXIT DO
-				END IF
 			CASE ":"
 				IF MID$(filedata$, j + 1, 1) = "|" THEN
 					IF musicrepeat$ = "" THEN
