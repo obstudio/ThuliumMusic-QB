@@ -253,8 +253,10 @@ SUB qymPlay (filename$)
 					beat = VAL(MID$(comment$, 3, 1)) / 4
 					musicclip$ = musicclip$ + "T" + MID$(STR$(INT(speed / beat)), 2)
 				CASE ELSE
-					speed = VAL(comment$)
-					musicclip$ = musicclip$ + "T" + MID$(STR$(INT(speed / beat)), 2)
+					IF RIGHT$(comment$, 1) <> "%" THEN
+						speed = VAL(comment$)
+						musicclip$ = musicclip$ + "T" + MID$(STR$(INT(speed / beat)), 2)
+					END IF
 				END SELECT
 				j = match
 			CASE "("
