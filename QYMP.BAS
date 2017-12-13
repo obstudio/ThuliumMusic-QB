@@ -191,15 +191,19 @@ SUB qymPlay (filename$)
 			time = 1
 			space = -1
 			dot = 0
-			IF note = 0 THEN
-				pitch = 0
+			IF chord THEN
+				chord = 0
 			ELSE
-				pitch = 25 + pitchDict(note) + tonality + sharp
+				IF note = 0 THEN
+					pitch = 0
+				ELSE
+					pitch = 25 + pitchDict(note) + tonality + sharp
+				END IF
 			END IF
 			sharp = 0
 			j = j + 1
 			midchar$ = MID$(filedata$, j, 1)
-			DO WHILE (j <= LEN(filedata$) AND (midchar$ = "-" OR midchar$ = "_" OR midchar$ = "'" OR midchar$ = "," OR midchar$ = "^" OR midchar$ = "."))
+			DO WHILE (j <= LEN(filedata$) AND (midchar$ = "-" OR midchar$ = "_" OR midchar$ = "'" OR midchar$ = "," OR midchar$ = "^" OR midchar$ = "." OR midchar$ = "&"))
 				SELECT CASE midchar$
 				CASE "-"
 					time = time + 1
@@ -213,29 +217,33 @@ SUB qymPlay (filename$)
 					dot = -1
 				CASE "^"
 					space = 0
+				CASE "&"
+					chord = -1
 				END SELECT
 				j = j + 1
 				midchar$ = MID$(filedata$, j, 1)
 			LOOP
-			IF tercet > 0 THEN
-				time = time * tercetTime
-				tercet = tercet - 1
-			END IF
-			IF time = 3 THEN
-				time = 2
-				dot = -1
-			END IF
-			noteType = INT(4 / time)
-			IF NOT (space) THEN
-				musicclip$ = musicclip$ + "ML"
-			END IF
-			musicclip$ = musicclip$ + "L" + MID$(STR$(noteType), 2)
-			musicclip$ = musicclip$ + "N" + MID$(STR$(pitch), 2)
-			IF dot THEN
-				musicclip$ = musicclip$ + "."
-			END IF
-			IF NOT (space) THEN
-				musicclip$ = musicclip$ + "MN"
+			IF NOT(chord) THEN
+				IF tercet > 0 THEN
+					time = time * tercetTime
+					tercet = tercet - 1
+				END IF
+				IF time = 3 THEN
+					time = 2
+					dot = -1
+				END IF
+				noteType = INT(4 / time)
+				IF NOT (space) THEN
+					musicclip$ = musicclip$ + "ML"
+				END IF
+				musicclip$ = musicclip$ + "L" + MID$(STR$(noteType), 2)
+				musicclip$ = musicclip$ + "N" + MID$(STR$(pitch), 2)
+				IF dot THEN
+					musicclip$ = musicclip$ + "."
+				END IF
+				IF NOT (space) THEN
+					musicclip$ = musicclip$ + "MN"
+				END IF
 			END IF
 		ELSE
 			SELECT CASE midchar$
