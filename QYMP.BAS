@@ -115,7 +115,7 @@ RETURN
 sub2:
 CLS
 LOCATE 1, 28
-PRINT "Qingyun Music Player 1.0.0.1"
+PRINT "Qingyun Music Player 1.0.1"
 LOCATE 3, 38
 PRINT "Help"
 LOCATE 5, 1
@@ -130,6 +130,40 @@ COLOR 0
 INPUT "", qwer
 COLOR 15
 RETURN
+
+FUNCTION getPitch (filedata$, position, tonality)
+	note = VAL(MID$(filedata$, position, 1))
+	IF note = 0 THEN
+		getPitch = 0
+	ELSE
+		getPitch = 25 + pitchDict(note) + tonality
+	END IF
+	i = position - 1
+	DO WHILE i >= 1
+		SELECT CASE MID$(filedata$, i, 1)
+		CASE "#"
+			getPitch = getPitch + 1
+		CASE "b"
+			getPitch = getPitch - 1
+		CASE ELSE
+			EXIT DO
+		END SELECT
+		i = i - 1
+	LOOP
+	i = position + 1
+	DO WHILE i <= LEN(filedata$)
+		SELECT CASE MID$(filedata$, i, 1)
+		CASE "'"
+			getPitch = getPitch + 12
+		CASE ","
+			getPitch = getPitch - 12
+		CASE ELSE
+			EXIT DO
+		END SELECT
+		i = i + 1
+	LOOP
+	position = i
+END FUNCTION
 
 FUNCTION pitchDict (comment)
 	SELECT CASE comment
@@ -153,66 +187,55 @@ END FUNCTION
 SUB qymPlay (filename$)
 	OPEN filename$ FOR INPUT AS #1
 	initialdata$ = ""
-	DO WHILE (initialdata$ = "" AND NOT (EOF(1)))
+	DO WHILE (initialdata$ = "" AND NOT (EOF(1))) '寻找初始化行
 		LINE INPUT #1, initialdata$
 		match = INSTR(1, initialdata$, "//")
 		IF match > 0 THEN
-			initialdata$ = LEFT$(initialdata$, match - 1)
+			initialdata$ = LEFT$(initialdata$, match - 1) '除去注释的字符
 		END IF
 	LOOP
-	IF RIGHT$(initialdata$, 1) = ">" THEN
+	IF RIGHT$(initialdata$, 1) = ">" THEN '判断是否为初始化行
 		filedata$ = ""
-		DO WHILE (filedata$ = "" AND NOT (EOF(1)))
+		DO WHILE (filedata$ = "" AND NOT (EOF(1))) '寻找第一行音乐
 			LINE INPUT #1, filedata$
 			match = INSTR(1, filedata$, "//")
 			IF match > 0 THEN
-				filedata$ = LEFT$(filedata$, match - 1)
+				filedata$ = LEFT$(filedata$, match - 1) '除去注释的字符
 			END IF
 		LOOP
 		filedata$ = initialdata$ + filedata$
 	ELSE
-		filedata$ = initialdata$
+		filedata$ = initialdata$ '没有初始化行，直接为第一行音乐
 	END IF
 	CLOSE #1
-	tonality = 0
-	beat = 1
-	speed = 88
-	sharp = 0
+	tonality = 0 '调性，与 C 大调相差的半音数，默认为 0（C 大调）
+	beat = 1 '拍号，一个四分音符所占的拍数，默认为 1（4/4 拍）
+	speed = 88 '速度，一分钟演奏多少个四分音符，默认为 88
 	tercet = 0
 	j = 1
 	music$ = ""
 	musicrepeat$ = ""
 	musicclip$ = ""
-	musicclip$ = musicclip$ + "T" + MID$(STR$(INT(speed / beat)), 2)
+	musicclip$ = musicclip$ + "T" + MID$(STR$(INT(speed / beat)), 2) '初始化为默认速度
 	DO WHILE j <= LEN(filedata$)
 		midchar$ = MID$(filedata$, j, 1)
 		IF ("0" <= midchar$ AND "7" >= midchar$) THEN
-			note = VAL(midchar$)
+			getPitchResult = getPitch(filedata$, j, tonality) '读取音调，参数不加括号为地址引用，函数中会改变 j 的值
+			IF chord THEN '保留和弦的第一个音的音调
+				chord = 0
+			ELSE
+				pitch = getPitchResult
+			END IF
 			time = 1
 			space = -1
 			dot = 0
-			IF chord THEN
-				chord = 0
-			ELSE
-				IF note = 0 THEN
-					pitch = 0
-				ELSE
-					pitch = 25 + pitchDict(note) + tonality + sharp
-				END IF
-			END IF
-			sharp = 0
-			j = j + 1
 			midchar$ = MID$(filedata$, j, 1)
-			DO WHILE (j <= LEN(filedata$) AND (midchar$ = "-" OR midchar$ = "_" OR midchar$ = "'" OR midchar$ = "," OR midchar$ = "^" OR midchar$ = "." OR midchar$ = "&"))
+			DO WHILE (j <= LEN(filedata$) AND (midchar$ = "-" OR midchar$ = "_" OR midchar$ = "." OR midchar$ = "^" OR midchar$ = "&"))
 				SELECT CASE midchar$
 				CASE "-"
 					time = time + 1
 				CASE "_"
 					time = time / 2
-				CASE "'"
-					pitch = pitch + 12
-				CASE ","
-					pitch = pitch - 12
 				CASE "."
 					dot = -1
 				CASE "^"
@@ -223,18 +246,18 @@ SUB qymPlay (filename$)
 				j = j + 1
 				midchar$ = MID$(filedata$, j, 1)
 			LOOP
-			IF NOT(chord) THEN
+			IF NOT(chord) THEN '和弦直接跳过播放，和弦的第一个音在和弦结束算出时值后播放
 				IF tercet > 0 THEN
 					time = time * tercetTime
 					tercet = tercet - 1
 				END IF
-				IF time = 3 THEN
+				IF time = 3 THEN '三拍的音符 noteType 不为整数，将其改为带附点的二分音符
 					time = 2
 					dot = -1
 				END IF
 				noteType = INT(4 / time)
 				IF NOT (space) THEN
-					musicclip$ = musicclip$ + "ML"
+					musicclip$ = musicclip$ + "ML" '延长状态
 				END IF
 				musicclip$ = musicclip$ + "L" + MID$(STR$(noteType), 2)
 				musicclip$ = musicclip$ + "N" + MID$(STR$(pitch), 2)
@@ -242,28 +265,24 @@ SUB qymPlay (filename$)
 					musicclip$ = musicclip$ + "."
 				END IF
 				IF NOT (space) THEN
-					musicclip$ = musicclip$ + "MN"
+					musicclip$ = musicclip$ + "MN" '重置为正常状态
 				END IF
 			END IF
 		ELSE
 			SELECT CASE midchar$
-			CASE "#"
-				sharp = sharp + 1
-			CASE "b"
-				sharp = sharp - 1
 			CASE "<"
 				match = INSTR(j + 1, filedata$, ">")
 				comment$ = MID$(filedata$, j + 1, match - j - 1)
 				SELECT CASE MID$(comment$, 2, 1)
 				CASE "="
-					tonality = tonalityDict(MID$(comment$, 3))
+					tonality = tonalityDict(MID$(comment$, 3)) '设置调性
 				CASE "/"
-					beat = VAL(MID$(comment$, 3, 1)) / 4
-					musicclip$ = musicclip$ + "T" + MID$(STR$(INT(speed / beat)), 2)
+					beat = VAL(MID$(comment$, 3, 1)) / 4 '设置拍号
+					musicclip$ = musicclip$ + "T" + MID$(STR$(INT(speed / beat)), 2) '重新调整速度
 				CASE ELSE
-					IF RIGHT$(comment$, 1) <> "%" THEN
+					IF RIGHT$(comment$, 1) <> "%" THEN '排除音量标签
 						speed = VAL(comment$)
-						musicclip$ = musicclip$ + "T" + MID$(STR$(INT(speed / beat)), 2)
+						musicclip$ = musicclip$ + "T" + MID$(STR$(INT(speed / beat)), 2) '设置速度
 					END IF
 				END SELECT
 				j = match
