@@ -186,27 +186,55 @@ END FUNCTION
 
 SUB qymPlay (filename$)
 	OPEN filename$ FOR INPUT AS #1
-	initialdata$ = ""
-	DO WHILE (initialdata$ = "" AND NOT (EOF(1))) '寻找初始化行
-		LINE INPUT #1, initialdata$
-		match = INSTR(1, initialdata$, "//")
-		IF match > 0 THEN
-			initialdata$ = LEFT$(initialdata$, match - 1) '除去注释的字符
+	filedata$ = ""
+	IF EOF(1) THEN
+		EXIT SUB
+	ELSE
+		LINE INPUT #1, dataline$
+	END IF
+	DO WHILE (LEN(dataline$) >= 2 AND LEFT$(dataline$, 2) = "//") '歌曲注释
+		IF EOF(1) THEN
+			EXIT DO
+		ELSE
+			LINE INPUT #1, dataline$
 		END IF
 	LOOP
-	IF RIGHT$(initialdata$, 1) = ">" THEN '判断是否为初始化行
-		filedata$ = ""
-		DO WHILE (filedata$ = "" AND NOT (EOF(1))) '寻找第一行音乐
-			LINE INPUT #1, filedata$
-			match = INSTR(1, filedata$, "//")
-			IF match > 0 THEN
-				filedata$ = LEFT$(filedata$, match - 1) '除去注释的字符
+	DO
+		DO WHILE dataline$ = "" '空行
+			IF EOF(1) THEN
+				EXIT DO
+			ELSE
+				LINE INPUT #1, dataline$
 			END IF
 		LOOP
-		filedata$ = initialdata$ + filedata$
-	ELSE
-		filedata$ = initialdata$ '没有初始化行，直接为第一行音乐
-	END IF
+		DO WHILE (LEN(dataline$) >= 2 AND LEFT$(dataline$, 2) = "//") '乐章注释
+			IF EOF(1) THEN
+				EXIT DO
+			ELSE
+				LINE INPUT #1, dataline$
+			END IF
+		LOOP
+		DO WHILE (dataline$ <> "" AND RIGHT$(dataline$, 1) = ">") '初始化行
+			filedata$ = filedata$ + dataline$
+			IF EOF(1) THEN
+				EXIT DO
+			ELSE
+				LINE INPUT #1, dataline$
+			END IF
+		LOOP
+		flag = -1 '标记是否该乐章第一个音轨
+		DO WHILE (dataline$ <> "" AND (LEN(dataline$) < 2 OR LEFT$(dataline$, 2) <> "//")) '音轨
+			IF flag THEN
+				filedata$ = filedata$ + dataline$
+				flag = 0
+			END IF
+			IF EOF(1) THEN
+				EXIT DO
+			ELSE
+				LINE INPUT #1, dataline$
+			END IF
+		LOOP
+	LOOP UNTIL EOF(1)
 	CLOSE #1
 	tonality = 0 '调性，与 C 大调相差的半音数，默认为 0（C 大调）
 	beat = 1 '拍号，一个四分音符所占的拍数，默认为 1（4/4 拍）
