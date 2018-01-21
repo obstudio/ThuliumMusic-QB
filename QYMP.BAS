@@ -343,7 +343,7 @@ FUNCTION tonalityDict (comment$)
 	CASE "D"
 		tonalityDict = 2
 	CASE "A"
-		tonalityDict = -3
+		tonalityDict = 9
 	CASE "E"
 		tonalityDict = 4
 	CASE "B"
@@ -359,7 +359,7 @@ FUNCTION tonalityDict (comment$)
 	CASE "bE"
 		tonalityDict = 3
 	CASE "bA"
-		tonalityDict = -4
+		tonalityDict = 8
 	CASE "bD"
 		tonalityDict = 1
 	CASE "bG"
